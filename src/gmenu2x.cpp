@@ -207,6 +207,10 @@ const string GMenu2X::getHome(void)
 	return gmenu2x_home;
 }
 
+#if defined(TARGET_Z2)
+char *progpath = "/mnt/ffs/gmenu2x/";
+#endif
+
 int main(int /*argc*/, char * /*argv*/[]) {
 	INFO("----\nGMenu2X starting: If you read this message in the logs, check http://gmenu2x.sourceforge.net/page/Troubleshooting for a solution\n----\n");
 
@@ -222,7 +226,13 @@ int main(int /*argc*/, char * /*argv*/[]) {
 
 	locale::global(locale(""));
 
+#ifdef IZ2S /* ZIPIT_Z2 */
+	progpath = get_current_dir_name();	
+	gmenu2x_home = (string)progpath;
+	strcat(progpath, "/");
+#else
 	gmenu2x_home = (string)home + (string)"/.gmenu2x";
+#endif
 	if (!fileExists(gmenu2x_home) && mkdir(gmenu2x_home.c_str(), 0770) < 0) {
 		ERROR("Unable to create gmenu2x home directory.\n");
 		return 1;
@@ -588,7 +598,11 @@ void GMenu2X::initMenu() {
 				menu->addActionLink(i,"USB Nand",MakeDelegate(this,&GMenu2X::activateNandUsb),tr["Activate Usb on Nand"],"skin:icons/usb.png");
 			//menu->addActionLink(i,"USB Root",MakeDelegate(this,&GMenu2X::activateRootUsb),tr["Activate Usb on the root of the Gp2x Filesystem"],"skin:icons/usb.png");*/
 #endif
+#ifdef IZ2S /* ZIPIT_Z2 */
+			if (fileExists("/tmp/log.txt"))
+#else
 			if (fileExists(getHome()+"/log.txt"))
+#endif
 				menu->addActionLink(i,tr["Log Viewer"],MakeDelegate(this,&GMenu2X::viewLog),tr["Displays last launched program's output"],"skin:icons/ebook.png");
 //			menu->addActionLink(i,tr["About"],MakeDelegate(this,&GMenu2X::about),tr["Info about GMenu2X"],"skin:icons/about.png");
 			menu->addActionLink(i,tr["Net Status"],MakeDelegate(this,&GMenu2X::ipstatus),tr["Check Network status and IP"],"skin:icons/netstatus.png");
@@ -821,7 +835,11 @@ and all the anonymous donors...\n\
 }
 
 void GMenu2X::viewLog() {
+#ifdef IZ2S /* ZIPIT_Z2 */
+	string logfile = "/tmp/log.txt";
+#else
 	string logfile = getHome()+"/log.txt";
+#endif
 	if (fileExists(logfile)) {
 		ifstream inf(logfile.c_str(), ios_base::in);
 		if (inf.is_open()) {
@@ -1239,6 +1257,9 @@ void GMenu2X::main() {
 				sc.skinRes("imgs/r_disabled.png")->blit(s,resX-10,0);
 			for (i=menu->firstDispSection(); i<menu->getSections().size() && i<menu->firstDispSection()+linkColumns; i++) {
 				string sectionIcon = "skin:sections/"+menu->getSections()[i]+".png";
+#ifdef IZ2S /* ZIPIT_Z2 */
+				DEBUG("GMenu2X: sectionIconn[%d] %s.\n", i, sectionIcon.c_str());
+#endif
 				x = (i-menu->firstDispSection())*skinConfInt["linkWidth"]+sectionsCoordX;
 				if (menu->selSectionIndex()==(int)i)
 					s->box(x, 0, skinConfInt["linkWidth"],
@@ -1251,6 +1272,9 @@ void GMenu2X::main() {
 				s->write( font, menu->getSections()[i], x, skinConfInt["topBarHeight"]-sectionLinkPadding, ASFont::HAlignCenter, ASFont::VAlignBottom );
 			}
 
+#ifdef IZ2S /* ZIPIT_Z2 */
+			DEBUG("GMenu2X: Links\n");
+#endif
 			//Links
 			s->setClipRect(offset,skinConfInt["topBarHeight"],resX-9,resY-74); //32*2+10
 			for (i=menu->firstDispRow()*linkColumns; i<(menu->firstDispRow()*linkColumns)+linksPerPage && i<menu->sectionLinks()->size(); i++) {
@@ -1266,6 +1290,9 @@ void GMenu2X::main() {
 			}
 			s->clearClipRect();
 
+#ifdef IZ2S /* ZIPIT_Z2 */
+			DEBUG("GMenu2X: drawScrollBar\n");
+#endif
 			drawScrollBar(linkRows,menu->sectionLinks()->size()/linkColumns + ((menu->sectionLinks()->size()%linkColumns==0) ? 0 : 1),menu->firstDispRow(),43,resY-81);
 
 			/*
@@ -1298,6 +1325,11 @@ void GMenu2X::main() {
 			if(getOverlayStatus() != 0)
 				sc.skinRes("imgs/overlayfs.png")->blit( s, resX-19*2, bottomBarIconY );
 			
+#ifdef IZ2S /* ZIPIT_Z2 */
+			DEBUG("GMenu2X: wifilevel\n");
+			nwifilevel = 0;
+			// NEED to fetch the wifi and battery dirs from slugs gmenu release.
+#else
 			//draw wifi status/signal level
 			if (nwifilevel == 0)
 				wifiIcon = "imgs/wifi/off.png";
@@ -1307,8 +1339,11 @@ void GMenu2X::main() {
 				wifiIcon = "imgs/wifi/"+string(wifilevel)+".png";
 			}
 			sc.skinRes(wifiIcon)->blit( s, resX-19*3, bottomBarIconY );
+#endif			
 			
-			
+#ifdef IZ2S /* ZIPIT_Z2 */
+			DEBUG("GMenu2X: batlevel = %d\n", nbattlevel);
+#else
 			//draw the battery status
 			if (nbattlevel == 6)
 				batteryIcon = "imgs/battery/ac.png";
@@ -1320,8 +1355,11 @@ void GMenu2X::main() {
 			sc.skinRes(batteryIcon)->blit( s, resX-19, bottomBarIconY );
 			//s->write( font, tr[batstr.c_str()], 20, 170 );
 			//On Screen Help
+#endif
 
-
+#ifdef IZ2S /* ZIPIT_Z2 */
+			DEBUG("GMenu2X: helpDisplayed = %d\n", helpDisplayed);
+#endif
 			if (helpDisplayed) {
 				s->box(10,50,300,helpBoxHeight+4, skinConfColors[COLOR_MESSAGE_BOX_BG]);
 				s->rectangle( 12,52,296,helpBoxHeight,
@@ -1403,6 +1441,9 @@ void GMenu2X::main() {
 			}
 		}
 
+#ifdef IZ2S /* ZIPIT_Z2 */
+		DEBUG("GMenu2X: pollEvent\n");
+#endif
 		InputManager::ButtonEvent event;
 	
 		if (input.pollEvent(&event) && event.state == InputManager::PRESSED)
@@ -1523,6 +1564,9 @@ void GMenu2X::main() {
 		}
         */
 		
+#ifdef IZ2S /* ZIPIT_Z2 */
+		DEBUG("GMenu2X: getBatteryWiFilevels\n");
+#endif
 		if(nloops++ > 200){  // about every ten seconds
 			
 			nbattlevel = getBatteryLevel();
@@ -1533,6 +1577,9 @@ void GMenu2X::main() {
 			nloops=0;
 		}
 				
+#ifdef IZ2S /* ZIPIT_Z2 */
+		DEBUG("GMenu2X: usleep(%d)\n", LOOP_DELAY);
+#endif
 		usleep(LOOP_DELAY);
 		
 	}

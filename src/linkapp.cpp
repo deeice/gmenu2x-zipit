@@ -31,6 +31,9 @@
 #include <sys/stat.h>
 #include <sys/ioctl.h>
 #include <signal.h>
+#ifdef IZ2S /* ZIPIT_Z2_IZ2S */
+#include <fcntl.h>
+#endif
 #include <unistd.h>
 
 #include <fstream>
@@ -390,9 +393,17 @@ void LinkApp::launch(const string &selectedFile, const string &selectedDir) {
 			chmod( command.c_str(), newstat.st_mode );
 	} // else, well.. we are no worse off :)
 
+#ifdef IZ2S /* ZIPIT_Z2_IZ2S */
+	extern char *progpath;
+	string filepath = progpath; //gmenu2x->getExePath();
+#endif
 	if (params!="") command += " " + params;
 	if (gmenu2x->confInt["outputLogs"]) command += " &> " + cmdclean(gmenu2x->getHome()) + "/log.txt";
+#ifdef IZ2S /* ZIPIT_Z2_IZ2S */
+	if (wrapper) command += "; sync & cd "+ cmdclean(filepath) +"; killall -9 gmenu2x; exec ./gmenu2x";
+#else
 	if (wrapper) command += "; sync & cd "+cmdclean(gmenu2x->getExePath())+"; exec ./gmenu2x";
+#endif
 	if (dontleave) {
 		system(command.c_str());
 	} else {
@@ -427,12 +438,21 @@ void LinkApp::launch(const string &selectedFile, const string &selectedDir) {
 		if (pid == (pid_t)-1) {
 			WARNING("Failed to create new process group\n");
 		}
+#ifdef IZ2S /* ZIPIT_Z2_IZ2S */
+		ioctl(0, TIOCSCTTY, STDOUT_FILENO);
+#else
 		ioctl(1, TIOCSCTTY, STDOUT_FILENO);
+#endif
 
 		int pgid = tcgetpgrp(STDOUT_FILENO);
 		signal(SIGTTOU, SIG_IGN);
 		tcsetpgrp(STDOUT_FILENO, pgid);
 		gmenu2x->writePID();
+#ifdef IZ2S /* ZIPIT_Z2_IZ2S */
+		// ---- Got this nice fix from the nanonote git sources ----
+		// ---- Try to avoid NODELAY warnings and bad nonblocking behavior ----
+		fcntl(0, F_SETFL, fcntl(0, F_GETFL) & ~O_NONBLOCK);
+#endif
 		execlp("/bin/sh","/bin/sh", "-c", command.c_str(), NULL);
 		//if execution continues then something went wrong and as we already called SDL_Quit we cannot continue
 		//try relaunching gmenu2x
